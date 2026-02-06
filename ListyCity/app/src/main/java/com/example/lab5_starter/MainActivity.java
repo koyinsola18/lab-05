@@ -12,6 +12,14 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+
+import android.util.Log;
+
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 public class MainActivity extends AppCompatActivity implements CityDialogFragment.CityDialogListener {
 
@@ -21,15 +29,34 @@ public class MainActivity extends AppCompatActivity implements CityDialogFragmen
     private ArrayList<City> cityArrayList;
     private ArrayAdapter<City> cityArrayAdapter;
 
+    private FirebaseFirestore db;
+    private CollectionReference citiesRef;
+
+    private City selectedCity = null;
+
+    private FloatingActionButton deleteCityButton;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
+        db = FirebaseFirestore.getInstance();
+        citiesRef = db.collection("cities");
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
+        });
+
+        //Delete
+        deleteCityButton = findViewById(R.id.buttonDeleteCity);
+
+        deleteCityButton.setOnClickListener(view -> {
+            if (selectedCity != null) {
+                citiesRef.document(selectedCity.getName()).delete();
+                selectedCity = null;
+            }
         });
 
         // Set views
@@ -41,7 +68,26 @@ public class MainActivity extends AppCompatActivity implements CityDialogFragmen
         cityArrayAdapter = new CityArrayAdapter(this, cityArrayList);
         cityListView.setAdapter(cityArrayAdapter);
 
-        addDummyData();
+        citiesRef.addSnapshotListener((value, error) -> {
+            if (error != null) {
+                Log.e("Firestore", error.toString());
+                return;
+            }
+
+            if (value != null) {
+                cityArrayList.clear();
+
+                for (QueryDocumentSnapshot snapshot : value) {
+                    String name = snapshot.getString("name");
+                    String province = snapshot.getString("province");
+
+                    cityArrayList.add(new City(name, province));
+                }
+
+                cityArrayAdapter.notifyDataSetChanged();
+            }
+        });
+
 
         // set listeners
         addCityButton.setOnClickListener(view -> {
@@ -50,27 +96,35 @@ public class MainActivity extends AppCompatActivity implements CityDialogFragmen
         });
 
         cityListView.setOnItemClickListener((adapterView, view, i, l) -> {
-            City city = cityArrayAdapter.getItem(i);
-            CityDialogFragment cityDialogFragment = CityDialogFragment.newInstance(city);
-            cityDialogFragment.show(getSupportFragmentManager(),"City Details");
+            selectedCity = cityArrayAdapter.getItem(i);
+
+            CityDialogFragment cityDialogFragment =
+                    CityDialogFragment.newInstance(selectedCity);
+            cityDialogFragment.show(getSupportFragmentManager(), "City Details");
         });
 
     }
 
     @Override
-    public void updateCity(City city, String title, String year) {
-        city.setName(title);
-        city.setProvince(year);
-        cityArrayAdapter.notifyDataSetChanged();
+    public void updateCity(City city, String title, String province) {
 
-        // Updating the database using delete + addition
+
+        citiesRef.document(city.getName()).delete();
+
+        HashMap<String, Object> data = new HashMap<>();
+        data.put("name", title);
+        data.put("province", province);
+
+        citiesRef.document(title).set(data);
     }
 
     @Override
-    public void addCity(City city){
-        cityArrayList.add(city);
-        cityArrayAdapter.notifyDataSetChanged();
+    public void addCity(City city) {
+        HashMap<String, Object> data = new HashMap<>();
+        data.put("name", city.getName());
+        data.put("province", city.getProvince());
 
+        citiesRef.document(city.getName()).set(data);
     }
 
     public void addDummyData(){

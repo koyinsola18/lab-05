@@ -8,6 +8,18 @@
     tools:context=".MainActivity"
     android:padding="6dp">
 
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/buttonDeleteCity"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:contentDescription="Delete City"
+        android:src="@android:drawable/ic_delete"
+        android:tint="@android:color/white"
+        app:backgroundTint="@android:color/holo_red_dark"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_margin="16dp" />
+
     <Button
         android:id="@+id/buttonAddCity"
         android:text="Add City"
